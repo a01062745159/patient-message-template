@@ -96,7 +96,7 @@ with tab1:
             
             address = st.text_area(
                 "병원 정보 (주소/전화번호 등)",
-                placeholder="예: 서울시 강남구 테헤란로 123\n02-1234-5678",
+                placeholder="예: 경기도 오산시 성호대로 81, 1층 서울수려한치과\n031-xxxx-xxxx",
                 max_chars=200
             )
         else:

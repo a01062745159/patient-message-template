@@ -18,6 +18,8 @@ DATA_DIR.mkdir(exist_ok=True)
 
 TEMPLATES_FILE = DATA_DIR / "templates.json"
 YOUTUBE_FILE = DATA_DIR / "youtube_links.json"
+PENDING_FILE = DATA_DIR / "pending_messages.json"
+COMPLETED_FILE = DATA_DIR / "completed_messages.json"
 
 # 초기 데이터 로드 함수
 def load_templates():
@@ -47,6 +49,26 @@ def save_youtube_links(links):
     with open(YOUTUBE_FILE, 'w', encoding='utf-8') as f:
         json.dump(links, f, ensure_ascii=False, indent=2)
 
+def load_pending_messages():
+    if PENDING_FILE.exists():
+        with open(PENDING_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+def save_pending_messages(messages):
+    with open(PENDING_FILE, 'w', encoding='utf-8') as f:
+        json.dump(messages, f, ensure_ascii=False, indent=2)
+
+def load_completed_messages():
+    if COMPLETED_FILE.exists():
+        with open(COMPLETED_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+def save_completed_messages(messages):
+    with open(COMPLETED_FILE, 'w', encoding='utf-8') as f:
+        json.dump(messages, f, ensure_ascii=False, indent=2)
+
 # 초기 세션 상태
 if 'templates' not in st.session_state:
     st.session_state.templates = load_templates()
@@ -54,15 +76,21 @@ if 'templates' not in st.session_state:
 if 'youtube_links' not in st.session_state:
     st.session_state.youtube_links = load_youtube_links()
 
+if 'pending_messages' not in st.session_state:
+    st.session_state.pending_messages = load_pending_messages()
+
+if 'completed_messages' not in st.session_state:
+    st.session_state.completed_messages = load_completed_messages()
+
 # 제목
 st.title("📱 환자 문자 템플릿 관리 시스템")
 
 # 탭 생성
-tab1, tab2, tab3 = st.tabs(["📤 템플릿 선택 및 복사", "✍️ 템플릿 관리", "🎥 YouTube 링크 관리"])
+tab1, tab2, tab3, tab4 = st.tabs(["📤 템플릿 선택 및 저장", "📧 템플릿 전송 관리", "✍️ 템플릿 관리", "🎥 YouTube 링크 관리"])
 
-# ===== TAB 1: 템플릿 선택 및 복사 =====
+# ===== TAB 1: 템플릿 선택 및 저장 =====
 with tab1:
-    st.header("템플릿 선택 및 복사")
+    st.header("템플릿 선택 및 저장")
     
     col1, col2 = st.columns([1, 1.5])
     
@@ -75,16 +103,18 @@ with tab1:
             patient_name = st.text_input(
                 "환자 이름",
                 placeholder="예: 김철수",
-                max_chars=20
+                max_chars=20,
+                key="tab1_patient_name"
             )
             
             selected_template = st.selectbox(
                 "템플릿 선택",
                 template_names,
-                label_visibility="collapsed"
+                label_visibility="collapsed",
+                key="tab1_template_select"
             )
             
-            add_video = st.checkbox("YouTube 링크 추가")
+            add_video = st.checkbox("YouTube 링크 추가", key="tab1_add_video")
             video_link = ""
             video_title = ""
             
@@ -94,7 +124,8 @@ with tab1:
                 selected_video = st.selectbox(
                     "YouTube 영상 선택",
                     list(youtube_options.keys()),
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="tab1_youtube_select"
                 )
                 video_link = youtube_options[selected_video]
                 video_title = st.session_state.youtube_links[[item['url'] for item in st.session_state.youtube_links].index(video_link)]['title']
@@ -104,7 +135,8 @@ with tab1:
             address = st.text_area(
                 "병원 정보 (주소/전화번호 등)",
                 placeholder="예: 경기도 오산시 성호대로 81, 1층 서울수려한치과\n031-xxxx-xxxx",
-                max_chars=200
+                max_chars=200,
+                key="tab1_address"
             )
         else:
             st.error("❌ 등록된 템플릿이 없습니다. 템플릿 관리 탭에서 추가해주세요.")
@@ -130,22 +162,183 @@ with tab1:
                 value=message,
                 disabled=True,
                 height=300,
-                label_visibility="collapsed"
+                label_visibility="collapsed",
+                key="tab1_preview"
             )
             
-            # 복사 버튼
-            col_copy, col_reset = st.columns(2)
+            # 버튼
+            col_copy, col_save = st.columns(2)
+            
             with col_copy:
                 if st.button("📋 클립보드에 복사", use_container_width=True, key="tab1_copy"):
                     st.write(message)
                     st.success("✅ 복사했습니다! 문자 앱에 붙여넣기 하세요.")
             
-            with col_reset:
-                if st.button("🔄 초기화", use_container_width=True, key="tab1_reset"):
-                    st.rerun()
+            with col_save:
+                if st.button("💾 저장하기", use_container_width=True, key="tab1_save", type="primary"):
+                    if not patient_name:
+                        st.error("❌ 환자 이름을 입력해주세요.")
+                    else:
+                        # 저장할 메시지 정보
+                        new_message = {
+                            "patient_name": patient_name,
+                            "template_name": selected_template,
+                            "content": message,
+                            "address": address,
+                            "video_title": video_title if add_video else None,
+                            "video_url": video_link if add_video else None,
+                            "saved_at": datetime.now().isoformat(),
+                            "status": "미전송"
+                        }
+                        
+                        st.session_state.pending_messages.append(new_message)
+                        save_pending_messages(st.session_state.pending_messages)
+                        
+                        st.success(f"✅ {patient_name}님의 메시지가 저장되었습니다!")
+                        st.info("📧 '템플릿 전송 관리' 탭에서 확인할 수 있습니다.")
 
-# ===== TAB 2: 템플릿 관리 =====
+# ===== TAB 2: 템플릿 전송 관리 =====
 with tab2:
+    st.header("📧 템플릿 전송 관리")
+    
+    # 미전송 / 전송완료 탭
+    manage_tab1, manage_tab2 = st.tabs(["📨 미전송 목록", "✅ 전송 완료 명단"])
+    
+    with manage_tab1:
+        st.subheader("미전송 메시지 목록")
+        
+        if st.session_state.pending_messages:
+            # 미전송 목록 표시
+            pending_list = []
+            for idx, msg in enumerate(st.session_state.pending_messages):
+                saved_time = msg['saved_at'][:16].replace('T', ' ')
+                pending_list.append({
+                    "번호": idx + 1,
+                    "환자명": msg['patient_name'],
+                    "템플릿": msg['template_name'],
+                    "저장시간": saved_time
+                })
+            
+            df_pending = pd.DataFrame(pending_list)
+            st.dataframe(df_pending, use_container_width=True, hide_index=True)
+            
+            st.divider()
+            
+            # 메시지 선택
+            selected_idx = st.selectbox(
+                "메시지 선택",
+                range(len(st.session_state.pending_messages)),
+                format_func=lambda x: f"{x+1}. {st.session_state.pending_messages[x]['patient_name']} - {st.session_state.pending_messages[x]['template_name']}",
+                key="pending_select"
+            )
+            
+            selected_msg = st.session_state.pending_messages[selected_idx]
+            
+            # 미리보기
+            st.subheader("📄 메시지 내용")
+            st.text_area(
+                "메시지 내용",
+                value=selected_msg['content'],
+                disabled=True,
+                height=250,
+                label_visibility="collapsed",
+                key="pending_preview"
+            )
+            
+            # 액션 버튼
+            col_copy, col_complete, col_delete = st.columns(3)
+            
+            with col_copy:
+                if st.button("📋 복사", use_container_width=True, key=f"pending_copy_{selected_idx}"):
+                    st.write(selected_msg['content'])
+                    st.success("✅ 복사했습니다!")
+            
+            with col_complete:
+                if st.button("✅ 전송 완료", use_container_width=True, key=f"pending_complete_{selected_idx}", type="primary"):
+                    # 미전송에서 제거
+                    msg_copy = st.session_state.pending_messages.pop(selected_idx)
+                    save_pending_messages(st.session_state.pending_messages)
+                    
+                    # 완료 목록에 추가
+                    msg_copy['completed_at'] = datetime.now().isoformat()
+                    msg_copy['status'] = '전송완료'
+                    st.session_state.completed_messages.append(msg_copy)
+                    save_completed_messages(st.session_state.completed_messages)
+                    
+                    st.success(f"✅ {selected_msg['patient_name']}님의 메시지가 전송 완료 목록으로 이동되었습니다!")
+                    st.rerun()
+            
+            with col_delete:
+                if st.button("🗑️ 삭제", use_container_width=True, key=f"pending_delete_{selected_idx}"):
+                    st.session_state.pending_messages.pop(selected_idx)
+                    save_pending_messages(st.session_state.pending_messages)
+                    st.success("✅ 메시지가 삭제되었습니다!")
+                    st.rerun()
+        
+        else:
+            st.info("📭 미전송 메시지가 없습니다.")
+    
+    with manage_tab2:
+        st.subheader("전송 완료 명단")
+        
+        if st.session_state.completed_messages:
+            # 전송완료 목록 표시
+            completed_list = []
+            for idx, msg in enumerate(st.session_state.completed_messages):
+                completed_time = msg['completed_at'][:16].replace('T', ' ')
+                completed_list.append({
+                    "번호": idx + 1,
+                    "환자명": msg['patient_name'],
+                    "템플릿": msg['template_name'],
+                    "전송시간": completed_time
+                })
+            
+            df_completed = pd.DataFrame(completed_list)
+            st.dataframe(df_completed, use_container_width=True, hide_index=True)
+            
+            st.divider()
+            
+            # 메시지 선택
+            selected_completed_idx = st.selectbox(
+                "메시지 선택",
+                range(len(st.session_state.completed_messages)),
+                format_func=lambda x: f"{x+1}. {st.session_state.completed_messages[x]['patient_name']} - {st.session_state.completed_messages[x]['template_name']}",
+                key="completed_select"
+            )
+            
+            selected_completed_msg = st.session_state.completed_messages[selected_completed_idx]
+            
+            # 미리보기
+            st.subheader("📄 메시지 내용")
+            st.text_area(
+                "메시지 내용",
+                value=selected_completed_msg['content'],
+                disabled=True,
+                height=250,
+                label_visibility="collapsed",
+                key="completed_preview"
+            )
+            
+            # 액션 버튼
+            col_copy, col_delete = st.columns(2)
+            
+            with col_copy:
+                if st.button("📋 복사", use_container_width=True, key=f"completed_copy_{selected_completed_idx}"):
+                    st.write(selected_completed_msg['content'])
+                    st.success("✅ 복사했습니다!")
+            
+            with col_delete:
+                if st.button("🗑️ 삭제", use_container_width=True, key=f"completed_delete_{selected_completed_idx}"):
+                    st.session_state.completed_messages.pop(selected_completed_idx)
+                    save_completed_messages(st.session_state.completed_messages)
+                    st.success("✅ 메시지가 삭제되었습니다!")
+                    st.rerun()
+        
+        else:
+            st.info("📭 전송 완료된 메시지가 없습니다.")
+
+# ===== TAB 3: 템플릿 관리 =====
+with tab3:
     st.header("템플릿 추가 및 수정")
     
     col1, col2 = st.columns([1, 2])
@@ -155,7 +348,8 @@ with tab2:
         action = st.radio(
             "작업을 선택하세요",
             ["새 템플릿 추가", "기존 템플릿 수정", "템플릿 삭제"],
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="template_action_radio"
         )
     
     with col2:
@@ -170,7 +364,7 @@ with tab2:
             
             new_content = st.text_area(
                 "템플릿 내용",
-                placeholder="[🏥 제목]\n\n내용을 입력하세요...",
+                placeholder="템플릿 내용을 입력하세요...",
                 height=300,
                 key="new_template_content"
             )
@@ -269,8 +463,8 @@ with tab2:
     else:
         st.info("등록된 템플릿이 없습니다.")
 
-# ===== TAB 3: YouTube 링크 관리 =====
-with tab3:
+# ===== TAB 4: YouTube 링크 관리 =====
+with tab4:
     st.header("YouTube 링크 관리")
     
     col1, col2 = st.columns([1, 2])
@@ -370,26 +564,30 @@ with tab3:
 with st.sidebar:
     st.title("📊 통계")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("템플릿", len(st.session_state.templates))
     with col2:
-        st.metric("YouTube 링크", len(st.session_state.youtube_links))
+        st.metric("미전송", len(st.session_state.pending_messages))
+    with col3:
+        st.metric("전송완료", len(st.session_state.completed_messages))
     
     st.divider()
     st.markdown("""
     ### 💡 사용 설명서
     
-    **Tab 1: 템플릿 선택**
-    - 기존 템플릿을 선택해서 복사합니다
-    - YouTube 링크와 병원 정보를 추가할 수 있습니다
+    **Tab 1: 템플릿 선택 및 저장**
+    - 템플릿 선택 후 환자 정보 입력
+    - "저장하기" 클릭 → Tab 2에 저장됨
     
-    **Tab 2: 템플릿 관리**
-    - 새로운 템플릿을 추가합니다
-    - 기존 템플릿을 수정합니다
-    - 불필요한 템플릿을 삭제합니다
+    **Tab 2: 전송 관리**
+    - 미전송: 저장된 메시지 목록
+    - 전송완료: 전송 완료 명단
+    - 각 메시지별 복사, 전송완료, 삭제 가능
     
-    **Tab 3: YouTube 관리**
-    - 유튜브 영상 링크를 등록합니다
-    - 등록된 링크를 삭제합니다
+    **Tab 3: 템플릿 관리**
+    - 템플릿 추가/수정/삭제
+    
+    **Tab 4: YouTube 관리**
+    - YouTube 링크 추가/삭제
     """)

@@ -71,6 +71,13 @@ with tab1:
         
         template_names = list(st.session_state.templates.keys())
         if template_names:
+            # 환자 이름 입력
+            patient_name = st.text_input(
+                "환자 이름",
+                placeholder="예: 김철수",
+                max_chars=20
+            )
+            
             selected_template = st.selectbox(
                 "템플릿 선택",
                 template_names,
@@ -107,6 +114,10 @@ with tab1:
             st.subheader("👁️ 미리보기")
             
             message = st.session_state.templates[selected_template]
+            
+            # 환자 이름 추가
+            if patient_name:
+                message = f"{patient_name}님 안녕하세요.\n\n" + message
             
             if add_video and video_link:
                 message += f"\n\n🎥 {video_title}\n{video_link}"

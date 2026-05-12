@@ -125,12 +125,12 @@ with tab1:
             # 복사 버튼
             col_copy, col_reset = st.columns(2)
             with col_copy:
-                if st.button("📋 클립보드에 복사", use_container_width=True, type="primary"):
+                if st.button("📋 클립보드에 복사", use_container_width=True, key="tab1_copy"):
                     st.write(message)
                     st.success("✅ 복사했습니다! 문자 앱에 붙여넣기 하세요.")
             
             with col_reset:
-                if st.button("🔄 초기화", use_container_width=True):
+                if st.button("🔄 초기화", use_container_width=True, key="tab1_reset"):
                     st.rerun()
 
 # ===== TAB 2: 템플릿 관리 =====
@@ -153,18 +153,20 @@ with tab2:
             
             new_name = st.text_input(
                 "템플릿 이름",
-                placeholder="예: 치석 제거 후 안내"
+                placeholder="예: 치석 제거 후 안내",
+                key="new_template_name"
             )
             
             new_content = st.text_area(
                 "템플릿 내용",
                 placeholder="[🏥 제목]\n\n내용을 입력하세요...",
-                height=300
+                height=300,
+                key="new_template_content"
             )
             
             col_add, col_cancel = st.columns(2)
             with col_add:
-                if st.button("✅ 저장", use_container_width=True, type="primary"):
+                if st.button("✅ 새 템플릿 저장", use_container_width=True, key="btn_add_template"):
                     if new_name and new_content:
                         if new_name in st.session_state.templates:
                             st.error("❌ 이미 있는 이름입니다.")
@@ -177,7 +179,7 @@ with tab2:
                         st.error("❌ 이름과 내용을 모두 입력해주세요.")
             
             with col_cancel:
-                if st.button("취소", use_container_width=True):
+                if st.button("취소", use_container_width=True, key="btn_cancel_add"):
                     st.rerun()
         
         elif action == "기존 템플릿 수정":
@@ -188,26 +190,28 @@ with tab2:
                 selected = st.selectbox(
                     "수정할 템플릿 선택",
                     template_names,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="select_edit_template"
                 )
                 
                 edited_content = st.text_area(
                     "템플릿 내용",
                     value=st.session_state.templates[selected],
                     height=300,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="edit_template_content"
                 )
                 
                 col_save, col_cancel = st.columns(2)
                 with col_save:
-                    if st.button("💾 수정 저장", use_container_width=True, type="primary"):
+                    if st.button("💾 수정 저장", use_container_width=True, key="btn_save_edit"):
                         st.session_state.templates[selected] = edited_content
                         save_templates(st.session_state.templates)
                         st.success(f"✅ '{selected}' 템플릿이 수정되었습니다!")
                         st.rerun()
                 
                 with col_cancel:
-                    if st.button("취소", use_container_width=True):
+                    if st.button("취소", use_container_width=True, key="btn_cancel_edit"):
                         st.rerun()
             else:
                 st.warning("⚠️ 수정할 템플릿이 없습니다.")
@@ -220,21 +224,22 @@ with tab2:
                 selected = st.selectbox(
                     "삭제할 템플릿 선택",
                     template_names,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="select_delete_template"
                 )
                 
                 st.warning(f"⚠️ '{selected}' 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")
                 
                 col_delete, col_cancel = st.columns(2)
                 with col_delete:
-                    if st.button("🗑️ 삭제 확인", use_container_width=True, type="secondary"):
+                    if st.button("🗑️ 삭제 확인", use_container_width=True, key="btn_delete_confirm"):
                         del st.session_state.templates[selected]
                         save_templates(st.session_state.templates)
                         st.success(f"✅ '{selected}' 템플릿이 삭제되었습니다!")
                         st.rerun()
                 
                 with col_cancel:
-                    if st.button("취소", use_container_width=True):
+                    if st.button("취소", use_container_width=True, key="btn_cancel_delete"):
                         st.rerun()
             else:
                 st.warning("⚠️ 삭제할 템플릿이 없습니다.")
@@ -261,7 +266,8 @@ with tab3:
         yt_action = st.radio(
             "작업을 선택하세요",
             ["새 링크 추가", "링크 삭제"],
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="yt_action_radio"
         )
     
     with col2:
@@ -270,17 +276,19 @@ with tab3:
             
             yt_title = st.text_input(
                 "영상 제목",
-                placeholder="예: 올바른 칫솔질 방법"
+                placeholder="예: 올바른 칫솔질 방법",
+                key="yt_title_input"
             )
             
             yt_url = st.text_input(
                 "YouTube 링크",
-                placeholder="https://youtu.be/... 또는 https://www.youtube.com/watch?v=..."
+                placeholder="https://youtu.be/... 또는 https://www.youtube.com/watch?v=...",
+                key="yt_url_input"
             )
             
             col_add, col_cancel = st.columns(2)
             with col_add:
-                if st.button("✅ 저장", use_container_width=True, type="primary"):
+                if st.button("✅ 링크 저장", use_container_width=True, key="btn_add_yt"):
                     if yt_title and yt_url:
                         # 중복 확인
                         if any(item['url'] == yt_url for item in st.session_state.youtube_links):
@@ -298,7 +306,7 @@ with tab3:
                         st.error("❌ 제목과 링크를 모두 입력해주세요.")
             
             with col_cancel:
-                if st.button("취소", use_container_width=True):
+                if st.button("취소", use_container_width=True, key="btn_cancel_add_yt"):
                     st.rerun()
         
         elif yt_action == "링크 삭제":
@@ -309,7 +317,8 @@ with tab3:
                 selected_yt = st.selectbox(
                     "삭제할 링크 선택",
                     yt_options,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="select_delete_yt"
                 )
                 
                 selected_idx = yt_options.index(selected_yt)
@@ -319,14 +328,14 @@ with tab3:
                 
                 col_delete, col_cancel = st.columns(2)
                 with col_delete:
-                    if st.button("🗑️ 삭제 확인", use_container_width=True, type="secondary"):
+                    if st.button("🗑️ 삭제 확인", use_container_width=True, key="btn_delete_yt"):
                         st.session_state.youtube_links.pop(selected_idx)
                         save_youtube_links(st.session_state.youtube_links)
                         st.success("✅ 링크가 삭제되었습니다!")
                         st.rerun()
                 
                 with col_cancel:
-                    if st.button("취소", use_container_width=True):
+                    if st.button("취소", use_container_width=True, key="btn_cancel_delete_yt"):
                         st.rerun()
             else:
                 st.warning("⚠️ 삭제할 링크가 없습니다.")

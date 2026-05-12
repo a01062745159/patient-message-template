@@ -97,111 +97,78 @@ with tab1:
     if not template_names:
         st.error("❌ 등록된 템플릿이 없습니다. 템플릿 관리 탭에서 추가해주세요.")
     else:
-        # 입력값들을 먼저 수집
-        st.subheader("📝 입력 정보")
-        col_input1, col_input2 = st.columns(2)
+        st.subheader("📋 정보 입력")
         
-        with col_input1:
-            patient_name = st.text_input(
-                "👤 환자 이름 *필수",
-                placeholder="예: 김철수",
-                max_chars=20,
-                key="tab1_patient_name"
-            )
+        # 1. 환자 이름
+        patient_name = st.text_input(
+            "👤 환자 이름 *필수",
+            placeholder="예: 김철수",
+            max_chars=20
+        )
         
-        with col_input2:
-            selected_template = st.selectbox(
-                "📋 템플릿 선택 *필수",
-                template_names,
-                key="tab1_template_select"
-            )
+        # 2. 템플릿 선택
+        selected_template = st.selectbox(
+            "📝 템플릿 선택 *필수",
+            template_names
+        )
         
-        # YouTube 선택
-        st.write("🎥 **YouTube 영상** (선택)")
+        # 3. YouTube 선택
         video_link = ""
         video_title = ""
         
         if st.session_state.youtube_links:
-            youtube_options = {f"{item['title']}" : item['url'] 
-                              for item in st.session_state.youtube_links}
-            youtube_list = ["❌ 선택 안 함"] + list(youtube_options.keys())
+            youtube_titles = [item['title'] for item in st.session_state.youtube_links]
+            youtube_dict = {item['title']: item['url'] for item in st.session_state.youtube_links}
             
-            selected_video = st.selectbox(
-                "영상 선택",
-                youtube_list,
-                key="tab1_youtube_select",
-                label_visibility="collapsed"
+            selected_yt = st.selectbox(
+                "🎥 YouTube 영상 (선택)",
+                ["❌ 선택 안 함"] + youtube_titles
             )
             
-            if selected_video != "❌ 선택 안 함":
-                video_link = youtube_options[selected_video]
-                video_title = selected_video
-            else:
-                video_link = ""
-                video_title = ""
+            if selected_yt != "❌ 선택 안 함":
+                video_title = selected_yt
+                video_link = youtube_dict[selected_yt]
         else:
             st.info("⚠️ 등록된 YouTube 링크가 없습니다. YouTube 링크 관리 탭에서 추가해주세요.")
-            video_link = ""
-            video_title = ""
-        
-        # 미리보기 생성
-        st.divider()
-        st.subheader("👁️ 미리보기")
-        
-        message = st.session_state.templates[selected_template]
-        
-        # 환자 이름 추가
-        if patient_name:
-            message = f"{patient_name}님 안녕하세요.\n\n" + message
-        
-        # YouTube 링크 추가
-        if video_link:
-            message += f"\n\n🎥 {video_title}\n{video_link}"
-        
-        st.text_area(
-            "문자 내용",
-            value=message,
-            disabled=True,
-            height=300,
-            label_visibility="collapsed",
-            key="tab1_preview"
-        )
         
         st.divider()
-        
-        # 저장 정보 확인
-        st.info(f"""
-        ✅ **저장될 정보:**
-        - 👤 환자명: **{patient_name if patient_name else '(입력 필요)'}**
-        - 📋 템플릿: **{selected_template}**
-        - 🎥 YouTube: **{video_title if video_title else '(선택 안 함)'}**
-        """)
         
         # 저장 버튼
-        col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
-        
-        with col_btn1:
-            if st.button("💾 저장하기", use_container_width=True, key="tab1_save", type="primary"):
-                if not patient_name:
-                    st.error("❌ 환자 이름을 입력해주세요.")
-                else:
-                    # 저장할 메시지 정보
-                    new_message = {
-                        "patient_name": patient_name,
-                        "template_name": selected_template,
-                        "content": message,
-                        "video_title": video_title if video_title else None,
-                        "video_url": video_link if video_link else None,
-                        "saved_at": datetime.now().isoformat(),
-                        "status": "미전송"
-                    }
-                    
-                    st.session_state.pending_messages.append(new_message)
-                    save_pending_messages(st.session_state.pending_messages)
-                    
-                    st.success(f"✅ {patient_name}님의 메시지가 저장되었습니다!")
-                    st.info("📧 '템플릿 전송 관리' 탭에서 확인할 수 있습니다.")
-                    st.rerun()
+        if st.button("💾 저장하기", use_container_width=True, type="primary"):
+            if not patient_name:
+                st.error("❌ 환자 이름을 입력해주세요.")
+            else:
+                # 메시지 생성
+                message = st.session_state.templates[selected_template]
+                message = f"{patient_name}님 안녕하세요.\n\n" + message
+                
+                if video_link:
+                    message += f"\n\n🎥 {video_title}\n{video_link}"
+                
+                # 저장
+                new_message = {
+                    "patient_name": patient_name,
+                    "template_name": selected_template,
+                    "content": message,
+                    "video_title": video_title if video_title else None,
+                    "video_url": video_link if video_link else None,
+                    "saved_at": datetime.now().isoformat(),
+                    "status": "미전송"
+                }
+                
+                st.session_state.pending_messages.append(new_message)
+                save_pending_messages(st.session_state.pending_messages)
+                
+                st.success(f"✅ {patient_name}님의 메시지가 저장되었습니다!")
+                st.info(f"""
+                📝 **저장된 정보:**
+                - 👤 환자명: {patient_name}
+                - 📋 템플릿: {selected_template}
+                - 🎥 YouTube: {video_title if video_title else '(선택 안 함)'}
+                
+                📧 '템플릿 전송 관리' 탭에서 확인할 수 있습니다.
+                """)
+                st.rerun()
 
 # ===== TAB 2: 템플릿 전송 관리 =====
 with tab2:

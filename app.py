@@ -136,8 +136,13 @@ with tab1:
             if selected_video != "❌ 선택 안 함":
                 video_link = youtube_options[selected_video]
                 video_title = selected_video
+            else:
+                video_link = ""
+                video_title = ""
         else:
             st.info("⚠️ 등록된 YouTube 링크가 없습니다. YouTube 링크 관리 탭에서 추가해주세요.")
+            video_link = ""
+            video_title = ""
         
         # 미리보기 생성
         st.divider()
